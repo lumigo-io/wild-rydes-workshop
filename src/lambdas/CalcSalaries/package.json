@@ -1,0 +1,19 @@
+{
+  "name": "calc-salaries",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "esbuild": "^0.15.9",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.1223.0"
+  }
+}
