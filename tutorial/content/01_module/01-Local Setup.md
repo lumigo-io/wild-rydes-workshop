@@ -1,5 +1,5 @@
 ---
-title: "Setup"
+title: "Local Setup"
 chapter: true
 weight: 01
 ---
