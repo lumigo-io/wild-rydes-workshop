@@ -4,9 +4,9 @@ chapter: true
 weight: 170
 ---
 
-## Cleanup
+# Cleanup
 
-1. Delete the Wild Rydes application from you account:
+1. Delete the Wild Rydes application from your account:
 
    ```sh
    cdk destroy --all
