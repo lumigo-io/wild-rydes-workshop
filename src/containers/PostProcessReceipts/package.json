@@ -1,0 +1,12 @@
+{
+  "name": "PostProcessReceipts",
+  "version": "1.0.0",
+  "license": "ISC",
+  "dependencies": {
+    "@lumigo/opentelemetry": "^1.0.1",
+    "express": "^4.18.1"
+  },
+  "scripts": {
+    "start": "node app/app.js"
+  }
+}

@@ -1,21 +1,26 @@
-// import * as npm from 'npm';
-// import { readdirSync } from 'fs';
+import { execSync } from 'child_process';
+import { readdirSync } from 'fs';
 import { join } from 'path';
 import { App, Duration, SecretValue, Stack, StackProps, RemovalPolicy, CfnOutput } from 'aws-cdk-lib';
 import { AccessLogFormat, AuthorizationType, CognitoUserPoolsAuthorizer, LambdaRestApi, LogGroupLogDestination } from 'aws-cdk-lib/aws-apigateway';
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { AttributeType, BillingMode, StreamViewType, Table, TableClass } from 'aws-cdk-lib/aws-dynamodb';
 import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { AwsLogDriver, Cluster, ContainerImage, FargateTaskDefinition, Protocol, Secret as EcsSecret} from 'aws-cdk-lib/aws-ecs';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { LayerVersion, Runtime, StartingPosition } from 'aws-cdk-lib/aws-lambda';
+import { DynamoEventSource, SnsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Bucket, BucketAccessControl } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { Construct } from 'constructs';
-import { DynamoEventSource, SnsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
+import { ApplicationProtocol, Protocol as ApplicationLoadBalancerProtocol } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface WyldRydesStackProps extends StackProps {
   readonly lumigoNodeLayerVersion: number;
@@ -164,6 +169,49 @@ export class WyldRydesStack extends Stack {
     unicornSalariesBucket.grantWrite(calcSalariesLambda);
     unicornStatsTable.grantReadWriteData(calcSalariesLambda);
 
+    const cluster = new Cluster(this, 'WyldRydesVpcEcsCluster', {
+      clusterName: 'WyldRydes',
+      vpc: vpc,
+    });
+    const serverPort = 80;
+    const postProcessReceiptsTaskDefinition = new FargateTaskDefinition(this, 'PostProcessReceiptsTaskDefinition');
+    postProcessReceiptsTaskDefinition.addContainer('serverApp', {
+      image: ContainerImage.fromAsset(join(__dirname, 'containers', 'PostProcessReceipts'), {
+        platform: Platform.LINUX_AMD64,
+      }),
+      memoryReservationMiB: 256,
+      environment: {
+        OTEL_SERVICE_NAME: 'PostProcessReceipts',
+        SERVER_PORT: String(serverPort),
+      },
+      secrets: {
+        LUMIGO_TRACER_TOKEN: EcsSecret.fromSecretsManager(Secret.fromSecretNameV2(this, 'Secret', 'AccessKeys'), 'LumigoToken'),
+      },
+      logging: new AwsLogDriver({
+        streamPrefix: 'post-process-receipts',
+      }),
+      portMappings: [
+        {
+          containerPort: serverPort,
+          protocol: Protocol.TCP,
+        },
+      ],
+    });
+    const postProcessReceiptsService = new ApplicationLoadBalancedFargateService(this, 'PostProcessReceiptsService', {
+      cluster: cluster,
+      taskDefinition: postProcessReceiptsTaskDefinition,
+      desiredCount: 1,
+      targetProtocol: ApplicationProtocol.HTTP,
+      listenerPort: serverPort,      
+    });
+    postProcessReceiptsService.targetGroup.configureHealthCheck({
+      path: "/health",
+      interval: Duration.seconds(10),
+      unhealthyThresholdCount: 5,
+      port: String(serverPort),
+      protocol: ApplicationLoadBalancerProtocol.HTTP,
+    }); 
+
     const uploadReceiptLambda = new NodejsFunction(this, 'UploadReceipt', {
       runtime: Runtime.NODEJS_16_X,
       entry: join(__dirname, 'lambdas', 'UploadReceipt', 'handler.js'),
@@ -173,6 +221,7 @@ export class WyldRydesStack extends Stack {
         LUMIGO_TRACER_TOKEN: lumigoTracerTokenSecret,
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/lumigo_wrapper',
         BUCKET_NAME: receiptsBucket.bucketName,
+        POST_PROCESS_ENDPOINT: `http://${postProcessReceiptsService.loadBalancer.loadBalancerDnsName}:${serverPort}/api/receipts`,
       },
       layers: [lumigoLayer],
       vpc,
@@ -319,18 +368,13 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
-// TODO Run `npm i` in the Lambda folders of find a way for the bundler to do that
-
-// const currentFolder = process.cwd();
-// readdirSync(__dirname)
-//   .forEach((lambda) => {
-//     const lambdaDir = join(__dirname, lambda);
-//     process.chdir(lambdaDir);
-//     npm.commands.install([], undefined);
-//   });
-// process.chdir(currentFolder);
-
 const app = new App();
+
+// Ensure the dependencies of the Lambda functions are installed,
+// for a better deployment experience.
+readdirSync(join(__dirname, 'src', 'lambdas')).forEach((lambdaDirectory) => {
+  execSync(`cd ${join('src', 'lambdas', lambdaDirectory)} && npm install`);
+});
 
 new WyldRydesStack(app, 'lumigo-workshop', {
   env,

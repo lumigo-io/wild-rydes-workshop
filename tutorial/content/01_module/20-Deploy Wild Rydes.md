@@ -26,6 +26,7 @@ Be sure to replace in the command above the `<REPLACE_ME>` with your actual Lumi
 Time to deploy Wild Rydes and start our journey in troubleshooting it!
 
 ```sh
+npm install
 cdk deploy --all --require-approval never
 ```
 
