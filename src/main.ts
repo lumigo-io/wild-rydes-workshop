@@ -372,8 +372,8 @@ const app = new App();
 
 // Ensure the dependencies of the Lambda functions are installed,
 // for a better deployment experience.
-readdirSync(join(__dirname, 'src', 'lambdas')).forEach((lambdaDirectory) => {
-  execSync(`cd ${join('src', 'lambdas', lambdaDirectory)} && npm install`);
+readdirSync(join(__dirname, 'lambdas')).forEach((lambdaDirectory) => {
+  execSync(`cd ${join(__dirname, 'lambdas', lambdaDirectory)} && npm install`);
 });
 
 new WyldRydesStack(app, 'lumigo-workshop', {
