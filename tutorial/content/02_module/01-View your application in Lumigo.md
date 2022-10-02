@@ -27,13 +27,25 @@ Clicking on the `Metrics` tab would show you some additional metrics like the nu
 
 ![Lumigo function](/images/mod02-lumigo-function-details-2.png)
 
-* Also, don't forget to check out the [Transactions](https://platform.lumigo.io/transactions) page to see the recent transactions that Lumigo has traced:
+* Click on the ECS view, and it will provide an overview of the Elastic Container Service (ECS) clusters in your AWS account.
 
-![Lumigo traces](/images/mod02-lumigo-traces.png)
+![Lumigo ECS view](/images/mod02-lumigo-ecs-clusters.png)
 
-* In this page, if you click on one of the transactions then you can see what happened on that transaction alongside the logs for all the participating functions. Click on one of the transactions that started with the `requestUnicorn` function and you should see something like this:
+* Selecting a cluster, it will show you its utilization metrics, the services and single tasks running on it.
 
-![Lumigo trace details](/images/mod02-lumigo-trace-details.png)
+![Lumigo ECS view](/images/mod02-lumigo-ecs-cluster.png)
+
+* Selecting the "Details" of an ECS service will show you information on how ti is configure, and enable you to jump to its view in the AWS console.
+
+![Lumigo ECS view](/images/mod02-lumigo-ecs-services.png)
+
+* Details can also be virtualized for single tasks.
+
+![Lumigo ECS view](/images/mod02-lumigo-ecs-tasks.png)
+
+* Also, don't forget to check out the [Explore](https://platform.lumigo.io/explore) page to have access to all the invocations traces by Lumigo:
+
+![Lumigo traces](/images/mod02-lumigo-explore.png)
 
 * If you click on any of the icons in the graph, you can see even more information about that resource, including any request and response to and fro the resource. For example, if you click on the `requestUnicorn` function, you should see its return value, invocation event, environment variables and its logs:
 
